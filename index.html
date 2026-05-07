@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <meta name="theme-color" content="#f97316">
+    <title>CheckApp · Checklist inteligente</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="style.css">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23f97316'/%3E%3Ctext x='50' y='67' font-size='45' text-anchor='middle' fill='white' font-family='Arial'%3E✓%3C/text%3E%3C/svg%3E">
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Cabeçalho personalizável -->
+        <header>
+            <div class="header-top">
+                <h1 id="appTitle">📋 CheckApp</h1>
+                <button id="configBtn" class="icon-btn" aria-label="Configurações">⚙️</button>
+            </div>
+            <div class="user-greeting">
+                <span id="greetingText">Olá, Visitante!</span>
+                <button id="editNameBtn" class="icon-btn small">✏️</button>
+            </div>
+        </header>
+
+        <!-- Seletor de lista e ações rápidas -->
+        <div class="list-selector">
+            <select id="listSelect"></select>
+            <button id="newListBtn" class="icon-btn" title="Nova lista">➕</button>
+        </div>
+
+        <!-- Barra de progresso da lista atual -->
+        <div class="progress-area">
+            <div class="progress-bar-container">
+                <div class="progress-fill" id="listProgressFill"></div>
+            </div>
+            <span id="progressPercentage">0%</span>
+        </div>
+
+        <!-- Modo Foco toggle -->
+        <div class="focus-toggle">
+            <label>
+                <input type="checkbox" id="focusModeToggle"> 🧘 Modo Foco
+            </label>
+        </div>
+
+        <!-- Lista de itens (renderizada dinamicamente) -->
+        <div id="itemsContainer" class="items-container"></div>
+
+        <!-- Campo para adicionar novo item + voz + foto -->
+        <div class="add-item-area">
+            <input type="text" id="newItemInput" placeholder="Digite um item..." autocomplete="off">
+            <button id="addByVoiceBtn" class="voice-btn" title="Adicionar por voz">🎤</button>
+            <button id="addByPhotoBtn" class="photo-btn" title="Ler lista de imagem">📷</button>
+            <button id="addItemBtn" class="add-btn">+</button>
+        </div>
+        <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none">
+
+        <!-- Sugestões automáticas -->
+        <div id="suggestionsPanel" class="suggestions-panel" style="display: none;">
+            <div class="suggestions-title">💡 Sugestões baseadas no histórico</div>
+            <div id="suggestionsList" class="suggestions-list"></div>
+        </div>
+
+        <!-- Rodapé com estatísticas e streak -->
+        <footer>
+            <div class="stats">
+                <span>✅ <span id="completedCount">0</span> de <span id="totalCount">0</span></span>
+                <span>🔥 Sequência: <span id="streakCount">0</span> dias</span>
+                <span>📅 Este mês: <span id="monthlyCompleted">0</span></span>
+            </div>
+            <div class="footer-buttons">
+                <button id="focusShortcut" class="footer-btn">🧘 Foco</button>
+                <button id="exportListsBtn" class="footer-btn">📥 Backup</button>
+                <button id="importListsBtn" class="footer-btn">📤 Restaurar</button>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Modal de configurações (nome, tema, limpar dados) -->
+    <div id="configModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2>Configurações</h2>
+            <label>Seu nome:</label>
+            <input type="text" id="userNameInput" placeholder="Ex: Edy" value="Visitante">
+            <label>Avatar (emoji):</label>
+            <input type="text" id="userAvatarInput" placeholder="😀" value="😀">
+            <label>Tema:</label>
+            <select id="themeSelect">
+                <option value="auto">Automático (sistema)</option>
+                <option value="light">Claro</option>
+                <option value="dark">Escuro</option>
+            </select>
+            <button id="resetAllDataBtn" class="danger-btn">Limpar todos os dados</button>
+            <button id="saveConfigBtn" class="primary-btn">Salvar</button>
+        </div>
+    </div>
+
+    <!-- Modal de edição de item (para subtarefas, tags, prioridade) -->
+    <div id="editItemModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2>Editar item</h2>
+            <label>Descrição:</label>
+            <input type="text" id="editItemText">
+            <label>Tag emoji:</label>
+            <div class="tag-buttons">
+                <button data-tag="🛒" class="tag-choice">🛒</button>
+                <button data-tag="🏠" class="tag-choice">🏠</button>
+                <button data-tag="💼" class="tag-choice">💼</button>
+                <button data-tag="❤️" class="tag-choice">❤️</button>
+                <button data-tag="📚" class="tag-choice">📚</button>
+                <button data-tag="⚕️" class="tag-choice">⚕️</button>
+                <button data-tag="❌" class="tag-choice">❌ (sem tag)</button>
+            </div>
+            <div class="subtasks-section">
+                <label>Subtarefas:</label>
+                <div id="subtasksContainer" class="subtasks-list"></div>
+                <div class="add-subtask">
+                    <input type="text" id="newSubtaskInput" placeholder="Nova subtarefa">
+                    <button id="addSubtaskBtn" class="small-btn">+</button>
+                </div>
+            </div>
+            <div class="modal-buttons">
+                <button id="deleteItemBtn" class="danger-btn">Excluir item</button>
+                <button id="saveItemBtn" class="primary-btn">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+      </html>
