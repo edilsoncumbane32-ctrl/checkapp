@@ -1,0 +1,16 @@
+{
+  "name": "CheckApp · Checklist Inteligente",
+  "short_name": "CheckApp",
+  "description": "Listas com voz, foto, subtarefas e modo foco",
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#f97316",
+  "background_color": "#f9fafb",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23f97316'/%3E%3Ctext x='50' y='67' font-size='45' text-anchor='middle' fill='white' font-family='Arial'%3E✓%3C/text%3E%3C/svg%3E",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
