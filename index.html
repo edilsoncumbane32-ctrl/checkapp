@@ -13,7 +13,6 @@
 </head>
 <body>
     <div class="app-container">
-        <!-- Cabeçalho personalizável -->
         <header>
             <div class="header-top">
                 <h1 id="appTitle">📋 CheckApp</h1>
@@ -25,13 +24,11 @@
             </div>
         </header>
 
-        <!-- Seletor de lista e ações rápidas -->
         <div class="list-selector">
             <select id="listSelect"></select>
             <button id="newListBtn" class="icon-btn" title="Nova lista">➕</button>
         </div>
 
-        <!-- Barra de progresso da lista atual -->
         <div class="progress-area">
             <div class="progress-bar-container">
                 <div class="progress-fill" id="listProgressFill"></div>
@@ -39,17 +36,14 @@
             <span id="progressPercentage">0%</span>
         </div>
 
-        <!-- Modo Foco toggle -->
         <div class="focus-toggle">
             <label>
                 <input type="checkbox" id="focusModeToggle"> 🧘 Modo Foco
             </label>
         </div>
 
-        <!-- Lista de itens (renderizada dinamicamente) -->
         <div id="itemsContainer" class="items-container"></div>
 
-        <!-- Campo para adicionar novo item + voz + foto -->
         <div class="add-item-area">
             <input type="text" id="newItemInput" placeholder="Digite um item..." autocomplete="off">
             <button id="addByVoiceBtn" class="voice-btn" title="Adicionar por voz">🎤</button>
@@ -58,13 +52,11 @@
         </div>
         <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none">
 
-        <!-- Sugestões automáticas -->
         <div id="suggestionsPanel" class="suggestions-panel" style="display: none;">
             <div class="suggestions-title">💡 Sugestões baseadas no histórico</div>
             <div id="suggestionsList" class="suggestions-list"></div>
         </div>
 
-        <!-- Rodapé com estatísticas e streak -->
         <footer>
             <div class="stats">
                 <span>✅ <span id="completedCount">0</span> de <span id="totalCount">0</span></span>
@@ -79,43 +71,47 @@
         </footer>
     </div>
 
-    <!-- Modal de configurações (nome, tema, limpar dados) -->
-    <div id="configModal" class="modal">
+    <!-- Modal de configurações -->
+    <div id="configModal" class="modal" style="display:none">
         <div class="modal-content">
-            <span class="close-modal">&times;</span>
+            <span class="close-modal" id="closeConfigModal">&times;</span>
             <h2>Configurações</h2>
             <label>Seu nome:</label>
             <input type="text" id="userNameInput" placeholder="Ex: Edy" value="Visitante">
             <label>Avatar (emoji):</label>
             <input type="text" id="userAvatarInput" placeholder="😀" value="😀">
-            <label>Tema:</label>
+            
+            <label>Tema de cores:</label>
+            <div class="theme-presets">
+                <button data-color="#f97316" class="color-preset" style="background:#f97316">Padrão</button>
+                <button data-color="#ec489a" class="color-preset" style="background:#ec489a">Rosa</button>
+                <button data-color="#3b82f6" class="color-preset" style="background:#3b82f6">Azul</button>
+                <button data-color="#10b981" class="color-preset" style="background:#10b981">Verde</button>
+                <button data-color="#8b5cf6" class="color-preset" style="background:#8b5cf6">Roxo</button>
+                <button data-color="#ef4444" class="color-preset" style="background:#ef4444">Vermelho</button>
+            </div>
+            <label>Cor personalizada:</label>
+            <input type="color" id="customColorPicker" value="#f97316">
+            <label>Tema claro/escuro:</label>
             <select id="themeSelect">
-                <option value="auto">Automático (sistema)</option>
+                <option value="auto">Automático</option>
                 <option value="light">Claro</option>
                 <option value="dark">Escuro</option>
             </select>
-            <button id="resetAllDataBtn" class="danger-btn">Limpar todos os dados</button>
+            <button id="resetAllDataBtn" class="danger-btn">Limpar dados</button>
             <button id="saveConfigBtn" class="primary-btn">Salvar</button>
         </div>
     </div>
 
-    <!-- Modal de edição de item (para subtarefas, tags, prioridade) -->
-    <div id="editItemModal" class="modal">
+    <!-- Modal de edição de item -->
+    <div id="editItemModal" class="modal" style="display:none">
         <div class="modal-content">
-            <span class="close-modal">&times;</span>
+            <span class="close-modal" id="closeEditModal">&times;</span>
             <h2>Editar item</h2>
             <label>Descrição:</label>
             <input type="text" id="editItemText">
-            <label>Tag emoji:</label>
-            <div class="tag-buttons">
-                <button data-tag="🛒" class="tag-choice">🛒</button>
-                <button data-tag="🏠" class="tag-choice">🏠</button>
-                <button data-tag="💼" class="tag-choice">💼</button>
-                <button data-tag="❤️" class="tag-choice">❤️</button>
-                <button data-tag="📚" class="tag-choice">📚</button>
-                <button data-tag="⚕️" class="tag-choice">⚕️</button>
-                <button data-tag="❌" class="tag-choice">❌ (sem tag)</button>
-            </div>
+            <label>Tag (emoji):</label>
+            <div class="tag-grid" id="tagGrid"></div>
             <div class="subtasks-section">
                 <label>Subtarefas:</label>
                 <div id="subtasksContainer" class="subtasks-list"></div>
@@ -133,4 +129,4 @@
 
     <script src="script.js"></script>
 </body>
-      </html>
+</html>
