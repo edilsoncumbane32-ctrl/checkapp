@@ -99,7 +99,8 @@ function renderCurrentList() {
     if (!currentList) return;
     let itemsToShow = focusMode ? (currentList.items.find(i => !i.completed) ? [currentList.items.find(i => !i.completed)] : []) : currentList.items;
     container.innerHTML = "";
-    itemsToShow.forEach(item => {
+    itemsToShow.forEach((item, idx) => {
+        const actualIndex = currentList.items.findIndex(i => i.id === item.id); // índice real na lista
         const div = document.createElement("div");
         div.className = `item-row ${item.completed ? 'completed' : ''}`;
         div.innerHTML = `
@@ -112,6 +113,8 @@ function renderCurrentList() {
                 ${renderSubtasks(item.subtasks || [])}
             </div>
             <div class="item-actions">
+                <button class="move-up-btn" data-id="${item.id}" ${actualIndex === 0 ? 'disabled' : ''}>↑</button>
+                <button class="move-down-btn" data-id="${item.id}" ${actualIndex === currentList.items.length-1 ? 'disabled' : ''}>↓</button>
                 <button class="edit-item-btn" data-id="${item.id}">✏️</button>
                 <button class="delete-item-btn" data-id="${item.id}">🗑️</button>
             </div>
@@ -121,6 +124,8 @@ function renderCurrentList() {
     document.querySelectorAll('.item-check').forEach(cb => cb.addEventListener('change', (e) => toggleItemComplete(e.target.dataset.id)));
     document.querySelectorAll('.edit-item-btn').forEach(btn => btn.addEventListener('click', (e) => openEditModal(btn.dataset.id)));
     document.querySelectorAll('.delete-item-btn').forEach(btn => btn.addEventListener('click', (e) => deleteItem(btn.dataset.id)));
+    document.querySelectorAll('.move-up-btn').forEach(btn => btn.addEventListener('click', (e) => moveItemUp(btn.dataset.id)));
+    document.querySelectorAll('.move-down-btn').forEach(btn => btn.addEventListener('click', (e) => moveItemDown(btn.dataset.id)));
 }
 function renderSubtasks(subtasks) {
     if (!subtasks.length) return '';
@@ -133,6 +138,25 @@ function renderSubtasks(subtasks) {
     });
     html += '</div>';
     return html;
+}
+// Funções de mover
+function moveItemUp(id) {
+    const list = appData.lists[appData.currentListId];
+    const idx = list.items.findIndex(i => i.id === id);
+    if (idx > 0) {
+        [list.items[idx-1], list.items[idx]] = [list.items[idx], list.items[idx-1]];
+        saveData();
+        updateUI();
+    }
+}
+function moveItemDown(id) {
+    const list = appData.lists[appData.currentListId];
+    const idx = list.items.findIndex(i => i.id === id);
+    if (idx < list.items.length - 1) {
+        [list.items[idx], list.items[idx+1]] = [list.items[idx+1], list.items[idx]];
+        saveData();
+        updateUI();
+    }
 }
 function updateProgress() {
     const list = appData.lists[appData.currentListId];
