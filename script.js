@@ -13,14 +13,13 @@ let editingItemId = null;
 let currentTag = "";
 let currentSubtaskList = [];
 
-// Lista de emojis
 const EMOJIS_LIST = [
     "🎉", "🌤️", "🌙", "💪", "🥳", "🗣️", "🧠", "👣", "🙏", "💅",
     "🛌", "🛀", "🧘", "💇", "🏃", "⛹️", "🤾", "🚴", "🏋️", "🤼",
     "🏄", "🚣", "🏊", "🤽", "🧑‍🩰", "💃", "🧑‍🍼", "🪂", "🧑‍💻", "🧑‍🏫", "🤱"
 ];
 
-// ==================== INICIALIZAÇÃO E DADOS ====================
+// ==================== INICIALIZAÇÃO ====================
 function loadData() {
     const stored = localStorage.getItem("checkapp_data");
     if (stored) {
@@ -58,10 +57,7 @@ function saveData() {
 function applyColor(hex) {
     document.documentElement.style.setProperty('--primary', hex);
     const colored = document.querySelectorAll('.add-btn, .voice-btn, .photo-btn, .primary-btn, .progress-fill');
-    colored.forEach(btn => {
-        if (btn.classList.contains('progress-fill')) btn.style.background = hex;
-        else btn.style.background = hex;
-    });
+    colored.forEach(btn => btn && (btn.style.background = hex));
 }
 function applyTheme() {
     const theme = appData.settings.theme;
@@ -74,7 +70,7 @@ function applyTheme() {
         document.body.setAttribute('data-theme', 'light');
     }
 }
-// ==================== UI RENDERIZAÇÃO ====================
+// ==================== UI ====================
 function updateUI() {
     renderListSelector();
     renderCurrentList();
@@ -101,11 +97,7 @@ function renderCurrentList() {
     const focusMode = document.getElementById("focusModeToggle")?.checked || false;
     const currentList = appData.lists[appData.currentListId];
     if (!currentList) return;
-    let itemsToShow = currentList.items;
-    if (focusMode) {
-        const firstPending = currentList.items.find(i => !i.completed);
-        itemsToShow = firstPending ? [firstPending] : [];
-    }
+    let itemsToShow = focusMode ? (currentList.items.find(i => !i.completed) ? [currentList.items.find(i => !i.completed)] : []) : currentList.items;
     container.innerHTML = "";
     itemsToShow.forEach(item => {
         const div = document.createElement("div");
@@ -126,16 +118,9 @@ function renderCurrentList() {
         `;
         container.appendChild(div);
     });
-    // eventos
-    document.querySelectorAll('.item-check').forEach(cb => {
-        cb.addEventListener('change', (e) => toggleItemComplete(e.target.dataset.id));
-    });
-    document.querySelectorAll('.edit-item-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => openEditModal(btn.dataset.id));
-    });
-    document.querySelectorAll('.delete-item-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => deleteItem(btn.dataset.id));
-    });
+    document.querySelectorAll('.item-check').forEach(cb => cb.addEventListener('change', (e) => toggleItemComplete(e.target.dataset.id)));
+    document.querySelectorAll('.edit-item-btn').forEach(btn => btn.addEventListener('click', (e) => openEditModal(btn.dataset.id)));
+    document.querySelectorAll('.delete-item-btn').forEach(btn => btn.addEventListener('click', (e) => deleteItem(btn.dataset.id)));
 }
 function renderSubtasks(subtasks) {
     if (!subtasks.length) return '';
@@ -170,17 +155,14 @@ function updateStats() {
     const list = appData.lists[appData.currentListId];
     if (!list) return;
     const completed = list.items.filter(i => i.completed).length;
-    const total = list.items.length;
     document.getElementById("completedCount").innerText = completed;
-    document.getElementById("totalCount").innerText = total;
+    document.getElementById("totalCount").innerText = list.items.length;
     document.getElementById("streakCount").innerText = list.streak || 0;
     let monthly = 0;
     const now = new Date();
-    for (let lst of Object.values(appData.lists)) {
-        for (let item of lst.items) {
+    for (let lst of Object.values(appData.lists))
+        for (let item of lst.items)
             if (item.completed && item.completedAt && new Date(item.completedAt).getMonth() === now.getMonth()) monthly++;
-        }
-    }
     document.getElementById("monthlyCompleted").innerText = monthly;
 }
 function updateGreeting() {
@@ -190,7 +172,7 @@ function updateGreeting() {
     document.getElementById("appTitle").innerHTML = `📋 CheckApp · ${escapeHtml(name)}`;
 }
 
-// ==================== AÇÕES DE ITENS ====================
+// ==================== AÇÕES ====================
 function addItem(text, tag = "") {
     const list = appData.lists[appData.currentListId];
     if (!text.trim()) return;
@@ -246,7 +228,8 @@ function renderTagGrid() {
         btn.textContent = emoji;
         btn.className = "tag-emoji-btn";
         if (currentTag === emoji) btn.classList.add("selected");
-        btn.addEventListener("click", () => {
+        btn.addEventListener("click", (e) => {
+            e.stopPropagation();
             currentTag = emoji;
             document.querySelectorAll(".tag-emoji-btn").forEach(b => b.classList.remove("selected"));
             btn.classList.add("selected");
@@ -257,7 +240,8 @@ function renderTagGrid() {
     removeBtn.textContent = "❌ Sem tag";
     removeBtn.className = "tag-emoji-btn";
     if (currentTag === "") removeBtn.classList.add("selected");
-    removeBtn.addEventListener("click", () => {
+    removeBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
         currentTag = "";
         document.querySelectorAll(".tag-emoji-btn").forEach(b => b.classList.remove("selected"));
         removeBtn.classList.add("selected");
@@ -348,22 +332,12 @@ function createNewList() {
     const name = prompt("Nome da nova lista:");
     if (!name) return;
     const id = "list_" + Date.now();
-    appData.lists[id] = {
-        id, name,
-        items: [],
-        createdAt: new Date().toISOString(),
-        streak: 0,
-        lastCompletionDate: null
-    };
+    appData.lists[id] = { id, name, items: [], createdAt: new Date().toISOString(), streak: 0, lastCompletionDate: null };
     appData.currentListId = id;
     saveData();
     updateUI();
 }
-function changeList(e) {
-    appData.currentListId = e.target.value;
-    saveData();
-    updateUI();
-}
+function changeList(e) { appData.currentListId = e.target.value; saveData(); updateUI(); }
 
 // ==================== BACKUP / RESTORE ====================
 function exportData() {
@@ -371,15 +345,12 @@ function exportData() {
     const blob = new Blob([dataStr], {type: "application/json"});
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url;
-    a.download = "checkapp_backup.json";
-    a.click();
+    a.href = url; a.download = "checkapp_backup.json"; a.click();
     URL.revokeObjectURL(url);
 }
 function importData() {
     const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "application/json";
+    input.type = "file"; input.accept = "application/json";
     input.onchange = (e) => {
         const file = e.target.files[0];
         const reader = new FileReader();
@@ -390,8 +361,7 @@ function importData() {
                 if (imported.settings) appData.settings = imported.settings;
                 if (imported.history) historyItems = imported.history;
                 localStorage.setItem("checkapp_history", JSON.stringify(historyItems));
-                saveData();
-                updateUI();
+                saveData(); updateUI();
                 alert("Listas restauradas!");
             } catch(err) { alert("Arquivo inválido."); }
         };
@@ -421,10 +391,7 @@ function saveConfig() {
     closeModals();
 }
 function resetAllData() {
-    if (confirm("Limpar todos os dados?")) {
-        localStorage.clear();
-        location.reload();
-    }
+    if (confirm("Limpar todos os dados?")) { localStorage.clear(); location.reload(); }
 }
 function closeModals() {
     document.getElementById("configModal").style.display = "none";
@@ -434,10 +401,7 @@ function closeModals() {
 // ==================== VOZ ====================
 let recognition = null;
 function initVoice() {
-    if (!('webkitSpeechRecognition' in window)) {
-        alert("Reconhecimento de voz não suportado.");
-        return;
-    }
+    if (!('webkitSpeechRecognition' in window)) { alert("Reconhecimento de voz não suportado."); return; }
     recognition = new webkitSpeechRecognition();
     recognition.lang = "pt-BR";
     recognition.continuous = false;
@@ -447,90 +411,49 @@ function startVoice() {
     if (!recognition) initVoice();
     if (!recognition) return;
     recognition.start();
-    recognition.onresult = (event) => {
-        const text = event.results[0][0].transcript;
-        if (text.trim()) addItem(text.trim());
-    };
+    recognition.onresult = (event) => { const text = event.results[0][0].transcript; if (text.trim()) addItem(text.trim()); };
     recognition.onerror = () => alert("Não foi possível entender.");
 }
 
 // ==================== OCR ====================
-function openCamera() {
-    document.getElementById("photoInput").click();
-}
+function openCamera() { document.getElementById("photoInput").click(); }
 document.getElementById("photoInput").addEventListener("change", async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    const statusMsg = document.createElement("div"); statusMsg.id = "ocrStatus"; statusMsg.innerText = "📷 Processando...";
-    document.body.appendChild(statusMsg);
+    const statusMsg = document.createElement("div"); statusMsg.id = "ocrStatus"; statusMsg.innerText = "📷 Processando..."; document.body.appendChild(statusMsg);
     try {
         const worker = await Tesseract.createWorker('por');
         const { data: { text } } = await worker.recognize(file);
         await worker.terminate();
-        if (text && text.trim()) {
-            const lines = text.split(/\r?\n/);
-            for (let line of lines) if (line.trim()) addItem(line.trim());
-        } else alert("Nenhum texto encontrado.");
+        if (text && text.trim()) { text.split(/\r?\n/).forEach(line => { if (line.trim()) addItem(line.trim()); }); }
+        else alert("Nenhum texto encontrado.");
     } catch(err) { alert("Erro ao ler imagem."); }
     finally { statusMsg.remove(); e.target.value = ""; }
 });
 
-// ==================== ESCAPE HTML ====================
-function escapeHtml(str) {
-    if (!str) return '';
-    return str.replace(/[&<>]/g, function(m) {
-        if (m === '&') return '&amp;';
-        if (m === '<') return '&lt;';
-        if (m === '>') return '&gt;';
-        return m;
-    });
-}
+function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, function(m) { if (m === '&') return '&amp;'; if (m === '<') return '&lt;'; if (m === '>') return '&gt;'; return m; }); }
 
 // ==================== EVENTOS ====================
 document.addEventListener("DOMContentLoaded", () => {
-    loadData();
-    loadHistory();
-    // Capturar eventos dos botões
+    loadData(); loadHistory();
     document.getElementById("listSelect")?.addEventListener("change", changeList);
     document.getElementById("newListBtn")?.addEventListener("click", createNewList);
-    document.getElementById("addItemBtn")?.addEventListener("click", () => {
-        const input = document.getElementById("newItemInput");
-        if (input.value.trim()) addItem(input.value.trim());
-        input.value = "";
-    });
+    document.getElementById("addItemBtn")?.addEventListener("click", () => { const input = document.getElementById("newItemInput"); if (input.value.trim()) addItem(input.value.trim()); input.value = ""; });
     document.getElementById("addByVoiceBtn")?.addEventListener("click", startVoice);
     document.getElementById("addByPhotoBtn")?.addEventListener("click", openCamera);
     document.getElementById("configBtn")?.addEventListener("click", openConfig);
     document.getElementById("saveConfigBtn")?.addEventListener("click", saveConfig);
     document.getElementById("resetAllDataBtn")?.addEventListener("click", resetAllData);
     document.getElementById("focusModeToggle")?.addEventListener("change", () => updateUI());
-    document.getElementById("focusShortcut")?.addEventListener("click", () => {
-        const cb = document.getElementById("focusModeToggle");
-        if (cb) { cb.checked = !cb.checked; updateUI(); }
-    });
+    document.getElementById("focusShortcut")?.addEventListener("click", () => { const cb = document.getElementById("focusModeToggle"); if (cb) { cb.checked = !cb.checked; updateUI(); } });
     document.getElementById("exportListsBtn")?.addEventListener("click", exportData);
     document.getElementById("importListsBtn")?.addEventListener("click", importData);
     document.getElementById("saveItemBtn")?.addEventListener("click", saveItemFromModal);
     document.getElementById("addSubtaskBtn")?.addEventListener("click", addSubtaskInModal);
-    document.getElementById("deleteItemBtn")?.addEventListener("click", () => {
-        if (editingItemId && confirm("Excluir item?")) {
-            deleteItem(editingItemId);
-            closeModals();
-        }
-    });
-    // Fechar modais com X ou fora
+    document.getElementById("deleteItemBtn")?.addEventListener("click", () => { if (editingItemId && confirm("Excluir item?")) { deleteItem(editingItemId); closeModals(); } });
     document.getElementById("closeConfigModal")?.addEventListener("click", closeModals);
     document.getElementById("closeEditModal")?.addEventListener("click", closeModals);
-    window.addEventListener("click", (e) => {
-        if (e.target.classList.contains("modal")) closeModals();
-    });
-    // Presets de cor
-    document.querySelectorAll(".color-preset").forEach(btn => {
-        btn.addEventListener("click", () => {
-            const color = btn.dataset.color;
-            document.getElementById("customColorPicker").value = color;
-            applyColor(color);
-        });
-    });
+    window.addEventListener("click", (e) => { if (e.target.classList.contains("modal")) closeModals(); });
+    document.querySelectorAll(".color-preset").forEach(btn => btn.addEventListener("click", () => { const color = btn.dataset.color; document.getElementById("customColorPicker").value = color; applyColor(color); }));
     updateUI();
 });
