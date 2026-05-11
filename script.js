@@ -1,29 +1,36 @@
 // ==================== MODELO DE DADOS ====================
 let appData = {
-    lists: {},            // key: listId, value: { name, items: [], createdAt, lastCompletedDate? }
+    lists: {},
     currentListId: null,
     settings: {
         userName: "Visitante",
         userAvatar: "😀",
-        theme: "auto"
+        theme: "auto",
+        primaryColor: "#f97316"
     }
 };
 let editingItemId = null;
-let editingListId = null;
 let currentTag = "";
 let currentSubtaskList = [];
 
-// Carregar dados do localStorage
+// Lista de emojis para grade
+const EMOJIS_LIST = [
+    "🎉", "🌤️", "🌙", "💪", "🥳", "🗣️", "🧠", "👣", "🙏", "💅",
+    "🛌", "🛀", "🧘", "💇", "🏃", "⛹️", "🤾", "🚴", "🏋️", "🤼",
+    "🏄", "🚣", "🏊", "🤽", "🧑‍🩰", "💃", "🧑‍🍼", "🪂", "🧑‍💻", "🧑‍🏫", "🤱"
+];
+
+// ==================== INICIALIZAÇÃO ====================
 function loadData() {
     const stored = localStorage.getItem("checkapp_data");
     if (stored) {
         try {
-            appData = JSON.parse(stored);
+            const parsed = JSON.parse(stored);
+            appData = parsed;
         } catch(e) {}
     }
     if (!appData.lists) appData.lists = {};
     if (!appData.currentListId && Object.keys(appData.lists).length === 0) {
-        // Criar lista padrão
         const defaultId = "list_" + Date.now();
         appData.lists[defaultId] = {
             id: defaultId,
@@ -37,14 +44,40 @@ function loadData() {
     } else if (appData.currentListId && !appData.lists[appData.currentListId]) {
         appData.currentListId = Object.keys(appData.lists)[0] || null;
     }
-    if (!appData.settings) appData.settings = { userName: "Visitante", userAvatar: "😀", theme: "auto" };
+    if (!appData.settings) appData.settings = { userName: "Visitante", userAvatar: "😀", theme: "auto", primaryColor: "#f97316" };
+    if (!appData.settings.primaryColor) appData.settings.primaryColor = "#f97316";
     applyTheme();
+    applyColor(appData.settings.primaryColor);
     updateUI();
 }
 function saveData() {
     localStorage.setItem("checkapp_data", JSON.stringify(appData));
 }
 
+// ==================== CORES ====================
+function applyColor(hex) {
+    document.documentElement.style.setProperty('--primary', hex);
+    // atualizar botões com gradiente (simplificado)
+    const coloredBtns = document.querySelectorAll('.add-btn, .voice-btn, .photo-btn, .primary-btn');
+    coloredBtns.forEach(btn => {
+        btn.style.background = hex;
+    });
+}
+function adjustColor(hex, percent) {
+    // função auxiliar para escurecer gradiente (opcional)
+}
+// ==================== TEMA CLARO/ESCURO ====================
+function applyTheme() {
+    const theme = appData.settings.theme;
+    const isDark = (theme === 'dark') || (theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    if (isDark) {
+        document.body.classList.add('dark');
+        document.body.setAttribute('data-theme', 'dark');
+    } else {
+        document.body.classList.remove('dark');
+        document.body.setAttribute('data-theme', 'light');
+    }
+}
 // ==================== UI RENDERIZAÇÃO ====================
 function updateUI() {
     renderListSelector();
@@ -72,10 +105,8 @@ function renderCurrentList() {
     if (!currentList) return;
     let itemsToShow = currentList.items;
     if (focusMode) {
-        // Mostrar apenas o primeiro item não concluído
         const firstPending = currentList.items.find(i => !i.completed);
-        if (firstPending) itemsToShow = [firstPending];
-        else itemsToShow = [];
+        itemsToShow = firstPending ? [firstPending] : [];
     }
     container.innerHTML = "";
     itemsToShow.forEach(item => {
@@ -97,24 +128,14 @@ function renderCurrentList() {
         `;
         container.appendChild(div);
     });
-    // Anexar eventos
     document.querySelectorAll('.item-check').forEach(cb => {
-        cb.addEventListener('change', (e) => {
-            const id = e.target.dataset.id;
-            toggleItemComplete(id);
-        });
+        cb.addEventListener('change', (e) => toggleItemComplete(e.target.dataset.id));
     });
     document.querySelectorAll('.edit-item-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const id = btn.dataset.id;
-            openEditModal(id);
-        });
+        btn.addEventListener('click', (e) => openEditModal(btn.dataset.id));
     });
     document.querySelectorAll('.delete-item-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const id = btn.dataset.id;
-            deleteItem(id);
-        });
+        btn.addEventListener('click', (e) => deleteItem(btn.dataset.id));
     });
 }
 function renderSubtasks(subtasks) {
@@ -141,7 +162,6 @@ function updateProgress() {
     const percent = (completed / total) * 100;
     document.getElementById("listProgressFill").style.width = percent + "%";
     document.getElementById("progressPercentage").innerText = Math.round(percent) + "%";
-    // confete se completou 100% e antes não estava
     if (completed === total && total > 0 && window.oldCompleted !== completed) {
         canvasConfetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
     }
@@ -154,34 +174,13 @@ function updateStats() {
     const completed = list.items.filter(i => i.completed).length;
     document.getElementById("completedCount").innerText = completed;
     document.getElementById("totalCount").innerText = total;
-
-    // Streak: contar dias consecutivos em que a lista foi totalmente completada? Implementação simples: data da última conclusão completa
-    const today = new Date().toDateString();
-    const allCompleted = completed === total && total > 0;
-    if (allCompleted && list.lastCompletionDate !== today) {
-        // incrementa streak
-        list.streak = (list.streak || 0) + 1;
-        list.lastCompletionDate = today;
-        saveData();
-    } else if (!allCompleted) {
-        // não reseta streak automaticamente, apenas para não completar
-    }
     document.getElementById("streakCount").innerText = list.streak || 0;
-
-    // Estatísticas mensais: contar itens concluídos neste mês (simples, baseado em log)
+    // estatísticas mensais simplificadas
     const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
     let monthly = 0;
-    for (let list of Object.values(appData.lists)) {
-        for (let item of list.items) {
-            if (item.completedAt) {
-                const d = new Date(item.completedAt);
-                if (d.getMonth() === currentMonth && d.getFullYear() === currentYear) monthly++;
-            } else if (item.completed) {
-                // sem data, considerar agora
-                monthly++;
-            }
+    for (let lst of Object.values(appData.lists)) {
+        for (let item of lst.items) {
+            if (item.completed && item.completedAt && new Date(item.completedAt).getMonth() === now.getMonth()) monthly++;
         }
     }
     document.getElementById("monthlyCompleted").innerText = monthly;
@@ -192,17 +191,7 @@ function updateGreeting() {
     document.getElementById("greetingText").innerHTML = `${avatar} Olá, ${escapeHtml(name)}!`;
     document.getElementById("appTitle").innerHTML = `📋 CheckApp · ${escapeHtml(name)}`;
 }
-function applyTheme() {
-    const theme = appData.settings.theme;
-    const isDark = (theme === 'dark') || (theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    if (isDark) {
-        document.body.classList.add('dark');
-        document.body.setAttribute('data-theme', 'dark');
-    } else {
-        document.body.classList.remove('dark');
-        document.body.setAttribute('data-theme', 'light');
-    }
-}
+
 // ==================== AÇÕES DE ITENS ====================
 function addItem(text, tag = "") {
     const list = appData.lists[appData.currentListId];
@@ -218,7 +207,6 @@ function addItem(text, tag = "") {
     list.items.push(newItem);
     saveData();
     updateUI();
-    // sugestão: adicionar ao histórico para sugestões futuras
     addToHistory(text);
 }
 function toggleItemComplete(id) {
@@ -229,8 +217,6 @@ function toggleItemComplete(id) {
         item.completedAt = item.completed ? new Date().toISOString() : null;
         saveData();
         updateUI();
-        updateStats();
-        updateProgress();
     }
 }
 function deleteItem(id) {
@@ -247,9 +233,35 @@ function openEditModal(id) {
     document.getElementById("editItemText").value = item.text;
     currentTag = item.tag || "";
     currentSubtaskList = [...(item.subtasks || [])];
+    renderTagGrid();
     renderSubtasksInModal();
-    const modal = document.getElementById("editItemModal");
-    modal.style.display = "flex";
+    document.getElementById("editItemModal").style.display = "flex";
+}
+function renderTagGrid() {
+    const container = document.getElementById("tagGrid");
+    container.innerHTML = "";
+    EMOJIS_LIST.forEach(emoji => {
+        const btn = document.createElement("button");
+        btn.textContent = emoji;
+        btn.className = "tag-emoji-btn";
+        if (currentTag === emoji) btn.classList.add("selected");
+        btn.addEventListener("click", () => {
+            currentTag = emoji;
+            document.querySelectorAll(".tag-emoji-btn").forEach(b => b.classList.remove("selected"));
+            btn.classList.add("selected");
+        });
+        container.appendChild(btn);
+    });
+    const removeBtn = document.createElement("button");
+    removeBtn.textContent = "❌ Sem tag";
+    removeBtn.className = "tag-emoji-btn";
+    if (currentTag === "") removeBtn.classList.add("selected");
+    removeBtn.addEventListener("click", () => {
+        currentTag = "";
+        document.querySelectorAll(".tag-emoji-btn").forEach(b => b.classList.remove("selected"));
+        removeBtn.classList.add("selected");
+    });
+    container.appendChild(removeBtn);
 }
 function renderSubtasksInModal() {
     const container = document.getElementById("subtasksContainer");
@@ -267,7 +279,7 @@ function renderSubtasksInModal() {
     document.querySelectorAll('.subtask-modal-check').forEach(cb => {
         cb.addEventListener('change', (e) => {
             const idx = parseInt(e.target.dataset.idx);
-            if (!isNaN(idx)) currentSubtaskList[idx].completed = e.target.checked;
+            currentSubtaskList[idx].completed = e.target.checked;
         });
     });
     document.querySelectorAll('.delete-subtask-btn').forEach(btn => {
@@ -301,7 +313,8 @@ function addSubtaskInModal() {
         renderSubtasksInModal();
     }
 }
-// ==================== SUGESTÕES ====================
+
+// ==================== SUGESTÕES E HISTÓRICO ====================
 let historyItems = [];
 function loadHistory() {
     const stored = localStorage.getItem("checkapp_history");
@@ -331,58 +344,14 @@ function renderSuggestions() {
     });
     panel.style.display = "block";
 }
-// ==================== VOZ ====================
-let recognition = null;
-function initVoice() {
-    if (!('webkitSpeechRecognition' in window)) {
-        alert("Reconhecimento de voz não suportado neste navegador.");
-        return;
-    }
-    recognition = new webkitSpeechRecognition();
-    recognition.lang = "pt-BR";
-    recognition.continuous = false;
-    recognition.interimResults = false;
-}
-function startVoice() {
-    if (!recognition) initVoice();
-    if (!recognition) return;
-    recognition.start();
-    recognition.onresult = (event) => {
-        const text = event.results[0][0].transcript;
-        if (text.trim()) addItem(text);
-    };
-    recognition.onerror = () => alert("Não foi possível entender. Tente novamente.");
-}
-// ==================== OCR ====================
-function openCamera() {
-    document.getElementById("photoInput").click();
-}
-document.getElementById("photoInput").addEventListener("change", async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const statusMsg = document.getElementById("statusMsg") || (() => { let s = document.createElement("div"); s.id="statusMsg"; document.body.appendChild(s); return s; })();
-    statusMsg.innerText = "📷 Processando imagem...";
-    try {
-        const worker = await Tesseract.createWorker('por');
-        const { data: { text } } = await worker.recognize(file);
-        await worker.terminate();
-        if (text && text.trim()) {
-            const lines = text.split(/\r?\n/);
-            for (let line of lines) {
-                if (line.trim()) addItem(line.trim());
-            }
-        } else alert("Nenhum texto encontrado na imagem.");
-    } catch(err) { alert("Erro ao ler imagem."); }
-    finally { statusMsg.innerText = ""; e.target.value = ""; }
-});
+
 // ==================== LISTAS ====================
 function createNewList() {
     const name = prompt("Nome da nova lista:");
     if (!name) return;
     const id = "list_" + Date.now();
     appData.lists[id] = {
-        id,
-        name: name,
+        id, name,
         items: [],
         createdAt: new Date().toISOString(),
         streak: 0,
@@ -397,7 +366,8 @@ function changeList(e) {
     saveData();
     updateUI();
 }
-// ==================== BACKUP & RESTORE ====================
+
+// ==================== BACKUP / RESTORE ====================
 function exportData() {
     const dataStr = JSON.stringify({ lists: appData.lists, settings: appData.settings, history: historyItems });
     const blob = new Blob([dataStr], {type: "application/json"});
@@ -424,35 +394,88 @@ function importData() {
                 localStorage.setItem("checkapp_history", JSON.stringify(historyItems));
                 saveData();
                 updateUI();
-                alert("Listas restauradas com sucesso!");
+                alert("Listas restauradas!");
             } catch(err) { alert("Arquivo inválido."); }
         };
         reader.readAsText(file);
     };
     input.click();
 }
+
 // ==================== CONFIGURAÇÕES ====================
 function openConfig() {
     document.getElementById("userNameInput").value = appData.settings.userName;
     document.getElementById("userAvatarInput").value = appData.settings.userAvatar;
     document.getElementById("themeSelect").value = appData.settings.theme;
+    document.getElementById("customColorPicker").value = appData.settings.primaryColor;
     document.getElementById("configModal").style.display = "flex";
 }
 function saveConfig() {
     appData.settings.userName = document.getElementById("userNameInput").value.trim() || "Visitante";
     appData.settings.userAvatar = document.getElementById("userAvatarInput").value.trim() || "😀";
     appData.settings.theme = document.getElementById("themeSelect").value;
-    saveData();
+    const newColor = document.getElementById("customColorPicker").value;
+    appData.settings.primaryColor = newColor;
+    applyColor(newColor);
     applyTheme();
+    saveData();
     updateGreeting();
     closeModals();
 }
 function resetAllData() {
-    if (confirm("Tem certeza? Isso apagará todas as suas listas, itens e histórico.")) {
+    if (confirm("Tem certeza? Isso apagará todas as listas.")) {
         localStorage.clear();
         location.reload();
     }
 }
+
+// ==================== VOZ ====================
+let recognition = null;
+function initVoice() {
+    if (!('webkitSpeechRecognition' in window)) {
+        alert("Reconhecimento de voz não suportado.");
+        return;
+    }
+    recognition = new webkitSpeechRecognition();
+    recognition.lang = "pt-BR";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+}
+function startVoice() {
+    if (!recognition) initVoice();
+    if (!recognition) return;
+    recognition.start();
+    recognition.onresult = (event) => {
+        const text = event.results[0][0].transcript;
+        if (text.trim()) addItem(text.trim());
+    };
+    recognition.onerror = () => alert("Não foi possível entender.");
+}
+
+// ==================== OCR ====================
+function openCamera() {
+    document.getElementById("photoInput").click();
+}
+document.getElementById("photoInput").addEventListener("change", async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const statusMsg = document.createElement("div"); statusMsg.id = "ocrStatus";
+    document.body.appendChild(statusMsg);
+    statusMsg.innerText = "📷 Processando imagem...";
+    try {
+        const worker = await Tesseract.createWorker('por');
+        const { data: { text } } = await worker.recognize(file);
+        await worker.terminate();
+        if (text && text.trim()) {
+            const lines = text.split(/\r?\n/);
+            for (let line of lines) {
+                if (line.trim()) addItem(line.trim());
+            }
+        } else alert("Nenhum texto encontrado.");
+    } catch(err) { alert("Erro ao ler imagem."); }
+    finally { statusMsg.remove(); e.target.value = ""; }
+});
+
 // ==================== AUX ====================
 function escapeHtml(str) {
     if (!str) return '';
@@ -466,11 +489,11 @@ function escapeHtml(str) {
 function closeModals() {
     document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
 }
-// ==================== EVENTOS E INICIALIZAÇÃO ====================
+
+// ==================== EVENTOS ====================
 document.addEventListener("DOMContentLoaded", () => {
     loadData();
     loadHistory();
-    // Eventos UI
     document.getElementById("listSelect").addEventListener("change", changeList);
     document.getElementById("newListBtn").addEventListener("click", createNewList);
     document.getElementById("addItemBtn").addEventListener("click", () => {
@@ -503,12 +526,12 @@ document.addEventListener("DOMContentLoaded", () => {
     window.addEventListener("click", (e) => {
         if (e.target.classList.contains("modal")) closeModals();
     });
-    // tags
-    document.querySelectorAll(".tag-choice").forEach(btn => {
-        btn.addEventListener("click", (e) => {
-            currentTag = btn.dataset.tag === "❌" ? "" : btn.dataset.tag;
-            document.querySelectorAll(".tag-choice").forEach(b => b.style.background = "");
-            btn.style.background = "var(--primary)";
+    // Color presets
+    document.querySelectorAll(".color-preset").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const color = btn.dataset.color;
+            document.getElementById("customColorPicker").value = color;
+            applyColor(color);
         });
     });
     updateUI();
